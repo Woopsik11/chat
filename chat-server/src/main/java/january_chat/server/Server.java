@@ -1,5 +1,6 @@
 package january_chat.server;
 
+import Properties.PropertyReader;
 import january_chat.auth.AuthService;
 
 import java.io.IOException;
@@ -10,23 +11,24 @@ import java.util.List;
 
 public class Server {
     public static final String REGEX = "%!%";
-    private static final int PORT = 8189;
-    private AuthService authService;
-    private List<ClientHandler> clientHandlers;
+    private final int port;
+    private final AuthService authService;
+    private final List<ClientHandler> clientHandlers;
 
     public Server(AuthService authService) {
+        port = PropertyReader.getInstance().getPort();
         this.clientHandlers = new ArrayList<>();
         this.authService = authService;
     }
 
     public void start() {
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server start!");
             while (true) {
                 System.out.println("Waiting for connection......");
-                Socket socket = serverSocket.accept();
+                var socket = serverSocket.accept();
                 System.out.println("Client connected");
-                ClientHandler clientHandler = new ClientHandler(socket, this);
+                var clientHandler = new ClientHandler(socket, this);
                 clientHandler.handle();
             }
         } catch (IOException e) {
@@ -37,12 +39,19 @@ public class Server {
         }
     }
 
-    public void privateMessage(String from, String message) {
-
+    public void privateMessage(String sender, String recipient, String message, ClientHandler senderHandler) {
+        var handler = getHandlerByUser(recipient);
+        if (handler == null) {
+            senderHandler.send(String.format("/error%s recipient not found: %s", REGEX, recipient));
+            return;
+        }
+        message = String.format("[PRIVATE] [%s] -> [%s]: %s", sender, recipient, message);
+        handler.send(message);
+        senderHandler.send(message);
     }
 
     public void broadcastMessage(String from, String message) {
-        message = "/broadcast" + REGEX + from + REGEX + message;
+        message = String.format("[%s]: %s", from, message);
         for (ClientHandler clientHandler : clientHandlers) {
             clientHandler.send(message);
         }
@@ -53,7 +62,7 @@ public class Server {
         sendOnlineClients();
     }
 
-    public synchronized void removeAuthorizedClientToList(ClientHandler clientHandler) {
+    public synchronized void removeAuthorizedClientFromList(ClientHandler clientHandler) {
         clientHandlers.remove(clientHandler);
         sendOnlineClients();
     }
@@ -86,5 +95,14 @@ public class Server {
 
     public AuthService getAuthService() {
         return authService;
+    }
+
+    private ClientHandler getHandlerByUser(String username) {
+        for (ClientHandler clientHandler : clientHandlers) {
+            if (clientHandler.getUserNick().equals(username)) {
+                return clientHandler;
+            }
+        }
+        return null;
     }
 }

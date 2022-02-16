@@ -22,28 +22,43 @@ public class MainChatController implements Initializable, MessageProcessor {
     private NetworkService networkService;
 
     @FXML
-    public VBox loginPanel;
+    private VBox changeNickPanel;
 
     @FXML
-    public TextField loginField;
+    private TextField newNickField;
 
     @FXML
-    public PasswordField passwordField;
+    private VBox changePasswordPanel;
 
     @FXML
-    public VBox mainChatPanel;
+    private PasswordField oldPassField;
 
     @FXML
-    public TextArea mainChatArea;
+    private PasswordField newPasswordField;
 
     @FXML
-    public ListView contactList;
+    private VBox loginPanel;
 
     @FXML
-    public TextField inputField;
+    private TextField loginField;
 
     @FXML
-    public Button btnSend;
+    private PasswordField passwordField;
+
+    @FXML
+    private VBox mainChatPanel;
+
+    @FXML
+    private TextArea mainChatArea;
+
+    @FXML
+    private ListView contactList;
+
+    @FXML
+    private TextField inputField;
+
+    @FXML
+    private Button btnSend;
 
     public void connectToServer(ActionEvent actionEvent) {
     }
@@ -69,7 +84,12 @@ public class MainChatController implements Initializable, MessageProcessor {
         if (message.isBlank()) {
             return;
         }
-        networkService.sendMessage("/broadcast" + REGEX + message);
+        var recipient = contactList.getSelectionModel().getSelectedItem();
+        if (!recipient.equals("ALL")) {
+            networkService.sendMessage("/w" + REGEX + recipient + REGEX + message);
+        } else {
+            networkService.sendMessage("/broadcast" + REGEX + message);
+        }
         inputField.clear();
     }
 
@@ -77,7 +97,6 @@ public class MainChatController implements Initializable, MessageProcessor {
     public void initialize(URL location, ResourceBundle resources) {
         this.networkService = new NetworkService(this);
     }
-
 
     @Override
     public void processMessage(String message) {
@@ -92,9 +111,6 @@ public class MainChatController implements Initializable, MessageProcessor {
                 loginPanel.setVisible(false);
                 mainChatPanel.setVisible(true);
                 break;
-            case "/broadcast":
-                mainChatArea.appendText(splitMessage[1] + ": " + splitMessage[2] + System.lineSeparator());
-                break;
             case "/error":
                 showError(splitMessage[1]);
                 System.out.println("got error " + splitMessage[1]);
@@ -106,8 +122,30 @@ public class MainChatController implements Initializable, MessageProcessor {
                     contacts.add(splitMessage[i]);
                 }
                 contactList.setItems(FXCollections.observableList(contacts));
+                contactList.getSelectionModel().selectFirst();
+                break;
+            case "/change_pass_ok":
+                changePasswordPanel.setVisible(false);
+                mainChatPanel.setVisible(true);
+                break;
+            default:
+                mainChatArea.appendText(splitMessage[0] + System.lineSeparator());
                 break;
         }
+    }
+
+    public void sendChangeNick(ActionEvent actionEvent) {
+        if (newNickField.getText().isBlank()) return;
+        networkService.sendMessage("/change_nick" + REGEX + newNickField.getText());
+    }
+
+    public void sendChangePass(ActionEvent actionEvent) {
+        if (newPasswordField.getText().isBlank() || oldPassField.getText().isBlank()) return;
+        networkService.sendMessage("/change_pass" + REGEX + oldPassField.getText() + REGEX + newPasswordField.getText());
+    }
+
+    public void sendEternalLogout(ActionEvent actionEvent) {
+        networkService.sendMessage("/remove");
     }
 
     private void showError(String message) {
@@ -134,9 +172,24 @@ public class MainChatController implements Initializable, MessageProcessor {
                 showError(e.getMessage());
 
             }
-
-            networkService.sendMessage(message);
         }
+
+        networkService.sendMessage(message);
+    }
+
+    public void returnToChat(ActionEvent actionEvent) {
+        changeNickPanel.setVisible(false);
+        changePasswordPanel.setVisible(false);
+        mainChatPanel.setVisible(true);
+    }
+
+    public void showChangeNick(ActionEvent actionEvent) {
+        mainChatPanel.setVisible(false);
+        changeNickPanel.setVisible(true);
+    }
+
+    public void showChangePass(ActionEvent actionEvent) {
+        mainChatPanel.setVisible(false);
+        changePasswordPanel.setVisible(true);
     }
 }
-
