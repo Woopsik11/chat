@@ -7,6 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="chat-client" />
+        <module name="chat-common" />
         <module name="chft-server" />
       </profile>
     </annotationProcessing>
